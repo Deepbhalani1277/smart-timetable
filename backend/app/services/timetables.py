@@ -345,6 +345,10 @@ def seed_database():
             faculty_map[f_data["email"]] = existing
     db.session.flush()
 
+    for f in Faculty.query.all():
+        if f.email not in faculty_map:
+            faculty_map[f.email] = f
+
     # Multi-Semester Faculty Subject Assignments
     multi_semester_assignments = {
         "hitesh.it@charusat.ac.in": ["CEUC301", "ITUC201", "ITUC201-P"],            # Sem 5 (OSD) + Sem 3 (DS & DS Lab)
@@ -367,6 +371,11 @@ def seed_database():
         "chintal.it@charusat.ac.in": ["ITUE301"],
         "rajesh.it@charusat.ac.in": ["CEUC301"],
         "madhav.it@charusat.ac.in": ["CEUC301"],
+        "alan.turing@university.edu": ["CSUC301", "CSUE301"],
+        "ada.lovelace@university.edu": ["ITUC201", "ITUC201-P"],
+        "grace.hopper@university.edu": ["CEUC301", "CEUA301"],
+        "john.vonneumann@university.edu": ["CSUA301", "ITUC204", "ITUC204-P"],
+        "claude.shannon@university.edu": ["ITUC203", "ITUC203-P"],
     }
 
     for email, sub_codes in multi_semester_assignments.items():
@@ -481,7 +490,9 @@ def seed_database():
     db.session.flush()
 
     g5_a = group_map.get("B. Tech IT - 5th Sem (Div A)")
+    g5_b = group_map.get("B. Tech IT - 5th Sem (Div B)")
     g3_a = group_map.get("B. Tech IT - 3rd Sem (Div A)")
+    g3_b = group_map.get("B. Tech IT - 3rd Sem (Div B)")
 
     # 5th Semester Schedule (Matching 5IT UPDATED TT-1.pdf)
     # Entries: (day, time, sub_code, faculty_email, room_name, batch, group)
@@ -550,6 +561,45 @@ def seed_database():
         ("Friday", "14:20", "ITUC204-P", "ashish.it@charusat.ac.in", "Lab 216 - Software Lab", "A", g3_a),
         ("Friday", "14:20", "ITUC203-P", "akash.it@charusat.ac.in", "Lab 105 - Networks Lab", "B", g3_a),
         ("Friday", "14:20", "ITUC201-P", "mrugendra.it@charusat.ac.in", "Lab 104 - Systems Lab", "C", g3_a),
+
+        # --- Comprehensive Cohort & Faculty Coverage (Zero-Clash Dummy Schedule) ---
+        # Mon 5th Sem Div B & 3rd Sem Div B:
+        ("Monday", "09:10", "CSUC301", "alan.turing@university.edu", "Room 124", None, g5_b),
+        ("Monday", "10:10", "CEUE301", "dipika.it@charusat.ac.in", "Room 123", None, g5_b),
+        ("Monday", "11:10", "CSUE302", "nirav.it@charusat.ac.in", "Room 124", None, g5_b),
+        ("Monday", "13:10", "ITUC201-P", "ada.lovelace@university.edu", "Lab 204 - Web Tech Lab", "A", g3_b),
+        ("Monday", "13:10", "ITUC203-P", "claude.shannon@university.edu", "Lab 109 - AI/ML Lab", "B", g3_b),
+        ("Monday", "13:10", "ITUC204-P", "john.vonneumann@university.edu", "Lab 216 - Software Lab", "C", g3_b),
+        ("Monday", "14:20", "CEUA301", "grace.hopper@university.edu", "Room 229", None, g5_b),
+
+        # Tue 5th Sem Div B & 3rd Sem Div B:
+        ("Tuesday", "09:10", "ITUE302", "shital.it@charusat.ac.in", "Room 224", None, g5_b),
+        ("Tuesday", "10:10", "ITUE303", "khushi.it@charusat.ac.in", "Room 229", None, g5_b),
+        ("Tuesday", "11:10", "CEUC301", "rajesh.it@charusat.ac.in", "Room 224", None, g5_b),
+        ("Tuesday", "13:10", "CEUE301", "dipika.it@charusat.ac.in", "Lab 109 - AI/ML Lab", "A", g5_b),
+        ("Tuesday", "13:10", "ITUE302", "shital.it@charusat.ac.in", "Lab 105 - Networks Lab", "B", g5_b),
+        ("Tuesday", "13:10", "ITUE303", "khushi.it@charusat.ac.in", "Lab 216 - Software Lab", "C", g5_b),
+        ("Tuesday", "14:20", "ITUC201", "ada.lovelace@university.edu", "Room 123", None, g3_b),
+
+        # Wed 5th Sem Div B & 3rd Sem Div B:
+        ("Wednesday", "09:10", "CSUC301", "hardik.it@charusat.ac.in", "Room 224", None, g5_b),
+        ("Wednesday", "10:10", "ITUE301", "chintal.it@charusat.ac.in", "Room 124", None, g5_b),
+        ("Wednesday", "11:10", "CEUC301", "madhav.it@charusat.ac.in", "Room 229", None, g5_b),
+        ("Wednesday", "14:20", "ITUC203", "claude.shannon@university.edu", "Room 224", None, g3_b),
+        ("Wednesday", "15:20", "ITUC204", "john.vonneumann@university.edu", "Room 124", None, g3_b),
+
+        # Thu 5th Sem Div B & 3rd Sem Div B:
+        ("Thursday", "09:10", "CSUC301", "mohini.it@charusat.ac.in", "Room 229", None, g5_b),
+        ("Thursday", "10:10", "CEUE301", "dipika.it@charusat.ac.in", "Room 123", None, g5_b),
+        ("Thursday", "11:10", "CSUE302", "nirav.it@charusat.ac.in", "Room 224", None, g5_b),
+        ("Thursday", "14:20", "ITUE201", "arpit.it@charusat.ac.in", "Room 123", None, g3_b),
+
+        # Fri 5th Sem Div B & 3rd Sem Div B:
+        ("Friday", "09:10", "ITUE302", "shital.it@charusat.ac.in", "Room 224", None, g5_b),
+        ("Friday", "10:10", "ITUE303", "khushi.it@charusat.ac.in", "Room 123", None, g5_b),
+        ("Friday", "11:10", "ITUC203", "mikin.it@charusat.ac.in", "Room 229", None, g3_b),
+        ("Friday", "14:20", "CEUA301", "grace.hopper@university.edu", "Room 124", None, g5_b),
+        ("Friday", "15:20", "CSUC301", "alan.turing@university.edu", "Room 229", None, g3_b),
     ]
 
     for day, time_str, sub_code, fac_email, room_name, batch, grp in planned_entries:

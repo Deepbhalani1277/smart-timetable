@@ -28,7 +28,7 @@ import {
 import './App.css';
 import UniversityPrintSheet from './components/UniversityPrintSheet';
 
-const API_BASE = '/api';
+const API_BASE = import.meta.env.VITE_API_URL || '/api';
 
 export default function App() {
   const [activeTab, setActiveTab] = useState('timetable');

@@ -8,7 +8,8 @@ class Config:
     SECRET_KEY = os.environ.get("SECRET_KEY", "change-me-in-production")
     SQLALCHEMY_DATABASE_URI = os.environ.get("DATABASE_URL", "sqlite:///timetable.db")
     SQLALCHEMY_TRACK_MODIFICATIONS = False
-    CORS_ORIGINS = os.environ.get("CORS_ORIGINS", "http://localhost:5173").split(",")
+    _cors_env = os.environ.get("CORS_ORIGINS", "*").strip()
+    CORS_ORIGINS = "*" if _cors_env == "*" else [o.strip() for o in _cors_env.split(",") if o.strip()]
 
 
 class DevelopmentConfig(Config):
