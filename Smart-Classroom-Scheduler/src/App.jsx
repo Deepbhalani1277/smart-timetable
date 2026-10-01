@@ -190,8 +190,11 @@ export default function App() {
 
       if (resTT.data && resTT.data.length > 0) {
         setTimetables(resTT.data);
-        const latestId = resTT.data[0].id;
-        const ttDetail = await fetch(`${API_BASE}/timetables/${latestId}`).then((r) => r.json());
+        const preferredTT =
+          resTT.data.find((t) => t.status === 'published' && t.entries_count > 0) ||
+          resTT.data.find((t) => t.entries_count > 0) ||
+          resTT.data[0];
+        const ttDetail = await fetch(`${API_BASE}/timetables/${preferredTT.id}`).then((r) => r.json());
         if (ttDetail.data) {
           setCurrentTimetable(ttDetail.data);
         }
@@ -1169,6 +1172,25 @@ export default function App() {
             </div>
 
             <div className="toolbar-controls">
+              {timetables.length > 1 && (
+                <select
+                  className="input-select"
+                  value={currentTimetable?.id || ''}
+                  onChange={async (e) => {
+                    const selectedId = e.target.value;
+                    const ttDetail = await fetch(`${API_BASE}/timetables/${selectedId}`).then((r) => r.json());
+                    if (ttDetail.data) setCurrentTimetable(ttDetail.data);
+                  }}
+                  title="Select Active Timetable"
+                  style={{ fontWeight: 600, color: 'var(--primary, #0284c7)' }}
+                >
+                  {timetables.map((t) => (
+                    <option key={t.id} value={t.id}>
+                      📅 {t.name} ({t.entries_count} periods)
+                    </option>
+                  ))}
+                </select>
+              )}
               <select
                 className="input-select"
                 value={filterSemester}
