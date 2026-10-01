@@ -141,12 +141,52 @@ def update_time_slot(slot_id, data, partial=False):
     return serialize(ts), None
 
 
-def delete_time_slot(slot_id):
+def delete_time_slot(slot_id, force=False):
     ts = TimeSlot.query.get(slot_id)
     if not ts:
         return False, "not_found"
-    if TimetableEntry.query.filter_by(time_slot_id=slot_id).first():
-        return False, "conflict"
+    entries = TimetableEntry.query.filter_by(time_slot_id=slot_id).all()
+    if entries:
+        if not force:
+            return False, "conflict"
+        for entry in entries:
+            db.session.delete(entry)
     db.session.delete(ts)
     db.session.commit()
     return True, None
+
+
+def apply_schedule_template(template_data):
+    days = template_data.get("days") or ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday"]
+    periods = template_data.get("periods") or []
+    clear_existing = template_data.get("clear_existing", True)
+
+    if not periods:
+        return None, {"periods": "At least one time slot period is required."}
+
+    if clear_existing:
+        TimetableEntry.query.delete()
+        TimeSlot.query.delete()
+        db.session.flush()
+
+    created_slots = []
+    for day in days:
+        if day not in DAYS_OF_WEEK:
+            continue
+        for p in periods:
+            st = _parse_time(p.get("start_time"))
+            et = _parse_time(p.get("end_time"))
+            if not st or not et or et <= st:
+                continue
+            ts = TimeSlot(
+                day_of_week=day,
+                start_time=st,
+                end_time=et,
+                label=p.get("label"),
+                is_break=bool(p.get("is_break", False)),
+            )
+            db.session.add(ts)
+            created_slots.append(ts)
+
+    db.session.commit()
+    return [serialize(ts) for ts in created_slots], None

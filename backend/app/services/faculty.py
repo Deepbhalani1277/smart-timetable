@@ -21,7 +21,10 @@ def serialize(f, include_subjects=False):
         "updated_at": serialize_datetime(f.updated_at),
     }
     if include_subjects:
-        d["subjects"] = [{"id": s.id, "name": s.name, "code": s.code} for s in f.subjects]
+        d["subjects"] = [
+            {"id": s.id, "name": s.name, "code": s.code, "semester": s.semester, "subject_type": s.subject_type}
+            for s in f.subjects
+        ]
     return d
 
 
@@ -59,7 +62,7 @@ def list_faculty(args):
     if args.get("designation"):
         q = q.filter(Faculty.designation == args["designation"])
     items, pagination = paginate_query(q, page, per_page)
-    return [serialize(f) for f in items], pagination
+    return [serialize(f, include_subjects=True) for f in items], pagination
 
 
 def get_faculty(faculty_id):

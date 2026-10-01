@@ -63,6 +63,7 @@ class TimetableEntry(db.Model):
     time_slot_id = db.Column(
         db.Integer, db.ForeignKey("time_slots.id", ondelete="RESTRICT"), nullable=False
     )
+    batch = db.Column(db.String(20), nullable=True)
     created_at = db.Column(db.DateTime, nullable=False, default=lambda: datetime.now(timezone.utc))
     updated_at = db.Column(
         db.DateTime,

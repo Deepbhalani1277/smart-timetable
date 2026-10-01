@@ -1,12 +1,20 @@
 {
-  "name": "Time-table",
+  "name": "smart-timetable",
   "version": "1.0.0",
-  "description": "",
-  "main": "index.js",
+  "description": "Smart Classroom & Timetable Scheduler — Clash-free automated academic schedule generator",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "start:backend": "cd backend && .\\.venv\\Scripts\\python run.py",
+    "start:frontend": "cd Smart-Classroom-Scheduler && npm run dev",
+    "seed": "cd backend && .\\.venv\\Scripts\\python seed.py",
+    "test": "cd backend && .\\.venv\\Scripts\\pytest"
   },
-  "keywords": [],
+  "keywords": [
+    "timetable",
+    "scheduler",
+    "smart-classroom",
+    "academic-scheduler",
+    "csp-solver"
+  ],
   "author": "",
   "license": "ISC"
 }

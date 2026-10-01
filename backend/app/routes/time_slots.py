@@ -58,9 +58,21 @@ def patch_time_slot(slot_id):
 
 @time_slots_bp.delete("/time-slots/<int:slot_id>")
 def delete_time_slot(slot_id):
-    success, reason = svc.delete_time_slot(slot_id)
+    force = request.args.get("force", "").lower() in ("true", "1")
+    success, reason = svc.delete_time_slot(slot_id, force=force)
     if not success:
         if reason == "not_found":
             return not_found("Time slot")
         return conflict("Time slot is referenced by timetable entries and cannot be deleted.")
     return no_content()
+
+
+@time_slots_bp.post("/time-slots/bulk-template")
+def apply_schedule_template():
+    body = request.get_json(silent=True)
+    if body is None:
+        return bad_request("Request body must be valid JSON.")
+    result, errors = svc.apply_schedule_template(body)
+    if errors:
+        return validation_error(errors)
+    return created(result)
