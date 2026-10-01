@@ -19,6 +19,7 @@ class Subject(db.Model):
     subject_type = db.Column(db.String(20), nullable=False, default="theory")
     required_room_type = db.Column(db.String(20), nullable=False, default="classroom")
     requires_consecutive_slots = db.Column(db.Boolean, nullable=False, default=False)
+    is_active = db.Column(db.Boolean, nullable=False, default=True)
     created_at = db.Column(db.DateTime, nullable=False, default=lambda: datetime.now(timezone.utc))
     updated_at = db.Column(
         db.DateTime,

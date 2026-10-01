@@ -1,8 +1,9 @@
-import re
 from app.extensions import db
 from app.models.subject import Subject, SUBJECT_TYPES, ROOM_TYPES
 from app.models.timetable import TimetableEntry
 from app.services.utils import serialize_datetime, paginate_query, parse_pagination
+
+SORTABLE = {"id", "name", "code", "department", "semester", "created_at"}
 
 
 def serialize(s):
@@ -17,6 +18,7 @@ def serialize(s):
         "subject_type": s.subject_type,
         "required_room_type": s.required_room_type,
         "requires_consecutive_slots": s.requires_consecutive_slots,
+        "is_active": s.is_active,
         "created_at": serialize_datetime(s.created_at),
         "updated_at": serialize_datetime(s.updated_at),
     }
@@ -80,7 +82,17 @@ def _validate(data, partial=False):
 
 def list_subjects(args):
     page, per_page = parse_pagination(args)
-    q = Subject.query.order_by(Subject.id)
+    sort_by = args.get("sort_by", "id")
+    if sort_by not in SORTABLE:
+        sort_by = "id"
+    order = getattr(Subject, sort_by)
+    if args.get("sort_dir", "asc").lower() == "desc":
+        order = order.desc()
+    q = Subject.query.order_by(order)
+    if args.get("name"):
+        q = q.filter(Subject.name.ilike(f"%{args['name']}%"))
+    if args.get("code"):
+        q = q.filter(Subject.code.ilike(f"%{args['code']}%"))
     if args.get("department"):
         q = q.filter(Subject.department == args["department"])
     if args.get("semester"):
@@ -92,19 +104,24 @@ def list_subjects(args):
         q = q.filter(Subject.subject_type == args["subject_type"])
     if args.get("required_room_type"):
         q = q.filter(Subject.required_room_type == args["required_room_type"])
+    if args.get("is_active") is not None:
+        val = args.get("is_active")
+        if isinstance(val, str):
+            val = val.lower() == "true"
+        q = q.filter(Subject.is_active == val)
     items, pagination = paginate_query(q, page, per_page)
     return [serialize(s) for s in items], pagination
 
 
 def get_subject(subject_id):
-    return Subject.query.get(subject_id)
+    return db.session.get(Subject, subject_id)
 
 
 def create_subject(data):
     errors = _validate(data)
     if errors:
         return None, errors
-    existing = Subject.query.filter_by(code=data["code"].strip()).first()
+    existing = Subject.query.filter_by(code=data["code"].strip().upper()).first()
     if existing:
         return None, {"code": "Subject code already exists."}
     s = Subject(
@@ -117,6 +134,7 @@ def create_subject(data):
         subject_type=data.get("subject_type", "theory"),
         required_room_type=data.get("required_room_type", "classroom"),
         requires_consecutive_slots=bool(data.get("requires_consecutive_slots", False)),
+        is_active=bool(data.get("is_active", True)),
     )
     db.session.add(s)
     db.session.commit()
@@ -124,7 +142,7 @@ def create_subject(data):
 
 
 def update_subject(subject_id, data, partial=False):
-    s = Subject.query.get(subject_id)
+    s = db.session.get(Subject, subject_id)
     if not s:
         return None, None
     errors = _validate(data, partial=partial)
@@ -152,12 +170,14 @@ def update_subject(subject_id, data, partial=False):
         s.required_room_type = data["required_room_type"]
     if "requires_consecutive_slots" in data:
         s.requires_consecutive_slots = bool(data["requires_consecutive_slots"])
+    if "is_active" in data:
+        s.is_active = bool(data["is_active"])
     db.session.commit()
     return serialize(s), None
 
 
 def delete_subject(subject_id):
-    s = Subject.query.get(subject_id)
+    s = db.session.get(Subject, subject_id)
     if not s:
         return False, "not_found"
     if TimetableEntry.query.filter_by(subject_id=subject_id).first():

@@ -19,6 +19,7 @@ class StudentGroup(db.Model):
     semester = db.Column(db.Integer, nullable=False)
     division = db.Column(db.String(20), nullable=True)
     student_count = db.Column(db.Integer, nullable=False)
+    is_active = db.Column(db.Boolean, nullable=False, default=True)
     created_at = db.Column(db.DateTime, nullable=False, default=lambda: datetime.now(timezone.utc))
     updated_at = db.Column(
         db.DateTime,

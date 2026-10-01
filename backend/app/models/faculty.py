@@ -19,6 +19,7 @@ class Faculty(db.Model):
     designation = db.Column(db.String(80), nullable=True)
     max_hours_per_day = db.Column(db.Numeric(4, 2), nullable=True)
     max_hours_per_week = db.Column(db.Numeric(5, 2), nullable=True)
+    is_active = db.Column(db.Boolean, nullable=False, default=True)
     created_at = db.Column(db.DateTime, nullable=False, default=lambda: datetime.now(timezone.utc))
     updated_at = db.Column(
         db.DateTime,

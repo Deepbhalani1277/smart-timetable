@@ -6,6 +6,7 @@ from app.models.timetable import TimetableEntry
 from app.services.utils import serialize_datetime, paginate_query, parse_pagination
 
 _EMAIL_RE = re.compile(r"^[^@\s]+@[^@\s]+\.[^@\s]+$")
+SORTABLE = {"id", "name", "department", "designation", "created_at"}
 
 
 def serialize(f, include_subjects=False):
@@ -17,6 +18,7 @@ def serialize(f, include_subjects=False):
         "designation": f.designation,
         "max_hours_per_day": float(f.max_hours_per_day) if f.max_hours_per_day is not None else None,
         "max_hours_per_week": float(f.max_hours_per_week) if f.max_hours_per_week is not None else None,
+        "is_active": f.is_active,
         "created_at": serialize_datetime(f.created_at),
         "updated_at": serialize_datetime(f.updated_at),
     }
@@ -53,17 +55,30 @@ def _validate(data, partial=False):
 
 def list_faculty(args):
     page, per_page = parse_pagination(args)
-    q = Faculty.query.order_by(Faculty.id)
+    sort_by = args.get("sort_by", "id")
+    if sort_by not in SORTABLE:
+        sort_by = "id"
+    order = getattr(Faculty, sort_by)
+    if args.get("sort_dir", "asc").lower() == "desc":
+        order = order.desc()
+    q = Faculty.query.order_by(order)
+    if args.get("name"):
+        q = q.filter(Faculty.name.ilike(f"%{args['name']}%"))
     if args.get("department"):
         q = q.filter(Faculty.department == args["department"])
     if args.get("designation"):
         q = q.filter(Faculty.designation == args["designation"])
+    if args.get("is_active") is not None:
+        val = args.get("is_active")
+        if isinstance(val, str):
+            val = val.lower() == "true"
+        q = q.filter(Faculty.is_active == val)
     items, pagination = paginate_query(q, page, per_page)
     return [serialize(f) for f in items], pagination
 
 
 def get_faculty(faculty_id):
-    return Faculty.query.get(faculty_id)
+    return db.session.get(Faculty, faculty_id)
 
 
 def create_faculty(data):
@@ -80,6 +95,7 @@ def create_faculty(data):
         designation=data.get("designation") or None,
         max_hours_per_day=data.get("max_hours_per_day"),
         max_hours_per_week=data.get("max_hours_per_week"),
+        is_active=bool(data.get("is_active", True)),
     )
     db.session.add(f)
     db.session.commit()
@@ -87,7 +103,7 @@ def create_faculty(data):
 
 
 def update_faculty(faculty_id, data, partial=False):
-    f = Faculty.query.get(faculty_id)
+    f = db.session.get(Faculty, faculty_id)
     if not f:
         return None, None
     errors = _validate(data, partial=partial)
@@ -109,12 +125,14 @@ def update_faculty(faculty_id, data, partial=False):
         f.max_hours_per_day = data["max_hours_per_day"]
     if "max_hours_per_week" in data:
         f.max_hours_per_week = data["max_hours_per_week"]
+    if "is_active" in data:
+        f.is_active = bool(data["is_active"])
     db.session.commit()
     return serialize(f), None
 
 
 def delete_faculty(faculty_id):
-    f = Faculty.query.get(faculty_id)
+    f = db.session.get(Faculty, faculty_id)
     if not f:
         return False, "not_found"
     if TimetableEntry.query.filter_by(faculty_id=faculty_id).first():
@@ -127,14 +145,14 @@ def delete_faculty(faculty_id):
 # --- Subject assignments ---
 
 def get_faculty_subjects(faculty_id):
-    f = Faculty.query.get(faculty_id)
+    f = db.session.get(Faculty, faculty_id)
     if not f:
         return None
     return [{"id": s.id, "name": s.name, "code": s.code} for s in f.subjects]
 
 
 def assign_subjects(faculty_id, subject_ids):
-    f = Faculty.query.get(faculty_id)
+    f = db.session.get(Faculty, faculty_id)
     if not f:
         return None, "faculty_not_found"
     if not isinstance(subject_ids, list) or not subject_ids:
@@ -146,7 +164,7 @@ def assign_subjects(faculty_id, subject_ids):
             return None, "invalid_ids"
         if sid in existing_ids:
             return None, f"subject_{sid}_already_assigned"
-        s = Subject.query.get(sid)
+        s = db.session.get(Subject, sid)
         if not s:
             return None, f"subject_{sid}_not_found"
         to_add.append(s)
@@ -157,10 +175,10 @@ def assign_subjects(faculty_id, subject_ids):
 
 
 def remove_subject(faculty_id, subject_id):
-    f = Faculty.query.get(faculty_id)
+    f = db.session.get(Faculty, faculty_id)
     if not f:
         return False, "faculty_not_found"
-    s = Subject.query.get(subject_id)
+    s = db.session.get(Subject, subject_id)
     if not s or s not in f.subjects:
         return False, "assignment_not_found"
     f.subjects.remove(s)

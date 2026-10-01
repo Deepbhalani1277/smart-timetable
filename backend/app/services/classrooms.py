@@ -3,6 +3,8 @@ from app.models.classroom import Classroom, ROOM_TYPES
 from app.models.timetable import TimetableEntry
 from app.services.utils import serialize_datetime, paginate_query, parse_pagination
 
+SORTABLE = {"id", "name", "building", "capacity", "room_type", "created_at"}
+
 
 def serialize(c):
     return {
@@ -13,6 +15,7 @@ def serialize(c):
         "room_type": c.room_type,
         "has_projector": c.has_projector,
         "has_computers": c.has_computers,
+        "is_active": c.is_active,
         "created_at": serialize_datetime(c.created_at),
         "updated_at": serialize_datetime(c.updated_at),
     }
@@ -54,7 +57,15 @@ def _check_name_building_conflict(name, building, exclude_id=None):
 
 def list_classrooms(args):
     page, per_page = parse_pagination(args)
-    q = Classroom.query.order_by(Classroom.id)
+    sort_by = args.get("sort_by", "id")
+    if sort_by not in SORTABLE:
+        sort_by = "id"
+    order = getattr(Classroom, sort_by)
+    if args.get("sort_dir", "asc").lower() == "desc":
+        order = order.desc()
+    q = Classroom.query.order_by(order)
+    if args.get("name"):
+        q = q.filter(Classroom.name.ilike(f"%{args['name']}%"))
     if args.get("building"):
         q = q.filter(Classroom.building == args["building"])
     if args.get("room_type"):
@@ -74,12 +85,17 @@ def list_classrooms(args):
         if isinstance(val, str):
             val = val.lower() == "true"
         q = q.filter(Classroom.has_computers == val)
+    if args.get("is_active") is not None:
+        val = args.get("is_active")
+        if isinstance(val, str):
+            val = val.lower() == "true"
+        q = q.filter(Classroom.is_active == val)
     items, pagination = paginate_query(q, page, per_page)
     return [serialize(c) for c in items], pagination
 
 
 def get_classroom(classroom_id):
-    return Classroom.query.get(classroom_id)
+    return db.session.get(Classroom, classroom_id)
 
 
 def create_classroom(data):
@@ -97,6 +113,7 @@ def create_classroom(data):
         room_type=data.get("room_type", "classroom"),
         has_projector=bool(data.get("has_projector", False)),
         has_computers=bool(data.get("has_computers", False)),
+        is_active=bool(data.get("is_active", True)),
     )
     db.session.add(c)
     db.session.commit()
@@ -104,7 +121,7 @@ def create_classroom(data):
 
 
 def update_classroom(classroom_id, data, partial=False):
-    c = Classroom.query.get(classroom_id)
+    c = db.session.get(Classroom, classroom_id)
     if not c:
         return None, None
     errors = _validate(data, partial=partial)
@@ -127,12 +144,14 @@ def update_classroom(classroom_id, data, partial=False):
         c.has_projector = bool(data["has_projector"])
     if "has_computers" in data:
         c.has_computers = bool(data["has_computers"])
+    if "is_active" in data:
+        c.is_active = bool(data["is_active"])
     db.session.commit()
     return serialize(c), None
 
 
 def delete_classroom(classroom_id):
-    c = Classroom.query.get(classroom_id)
+    c = db.session.get(Classroom, classroom_id)
     if not c:
         return False, "not_found"
     if TimetableEntry.query.filter_by(classroom_id=classroom_id).first():

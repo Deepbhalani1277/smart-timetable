@@ -14,6 +14,7 @@ class TimeSlot(db.Model):
     end_time = db.Column(db.Time, nullable=False)
     label = db.Column(db.String(50), nullable=True)
     is_break = db.Column(db.Boolean, nullable=False, default=False)
+    is_active = db.Column(db.Boolean, nullable=False, default=True)
     created_at = db.Column(db.DateTime, nullable=False, default=lambda: datetime.now(timezone.utc))
     updated_at = db.Column(
         db.DateTime,

@@ -4,6 +4,8 @@ from app.models.time_slot import TimeSlot, DAYS_OF_WEEK
 from app.models.timetable import TimetableEntry
 from app.services.utils import serialize_datetime, serialize_time, paginate_query, parse_pagination
 
+SORTABLE = {"id", "day_of_week", "start_time", "end_time", "created_at"}
+
 
 def serialize(ts):
     return {
@@ -13,13 +15,13 @@ def serialize(ts):
         "end_time": serialize_time(ts.end_time),
         "label": ts.label,
         "is_break": ts.is_break,
+        "is_active": ts.is_active,
         "created_at": serialize_datetime(ts.created_at),
         "updated_at": serialize_datetime(ts.updated_at),
     }
 
 
 def _parse_time(value):
-    """Parse HH:MM string to datetime.time. Returns None on failure."""
     if isinstance(value, time):
         return value
     try:
@@ -63,7 +65,6 @@ def _validate(data, partial=False):
 
 
 def _check_overlap(day, start, end, exclude_id=None):
-    """Return True if any existing slot on the same day overlaps [start, end)."""
     q = TimeSlot.query.filter(
         TimeSlot.day_of_week == day,
         TimeSlot.start_time < end,
@@ -76,7 +77,13 @@ def _check_overlap(day, start, end, exclude_id=None):
 
 def list_time_slots(args):
     page, per_page = parse_pagination(args)
-    q = TimeSlot.query.order_by(TimeSlot.day_of_week, TimeSlot.start_time)
+    sort_by = args.get("sort_by", "day_of_week")
+    if sort_by not in SORTABLE:
+        sort_by = "day_of_week"
+    order = getattr(TimeSlot, sort_by)
+    if args.get("sort_dir", "asc").lower() == "desc":
+        order = order.desc()
+    q = TimeSlot.query.order_by(order, TimeSlot.start_time)
     if args.get("day_of_week"):
         q = q.filter(TimeSlot.day_of_week == args["day_of_week"])
     if args.get("is_break") is not None:
@@ -84,12 +91,17 @@ def list_time_slots(args):
         if isinstance(val, str):
             val = val.lower() == "true"
         q = q.filter(TimeSlot.is_break == val)
+    if args.get("is_active") is not None:
+        val = args.get("is_active")
+        if isinstance(val, str):
+            val = val.lower() == "true"
+        q = q.filter(TimeSlot.is_active == val)
     items, pagination = paginate_query(q, page, per_page)
     return [serialize(ts) for ts in items], pagination
 
 
 def get_time_slot(slot_id):
-    return TimeSlot.query.get(slot_id)
+    return db.session.get(TimeSlot, slot_id)
 
 
 def create_time_slot(data):
@@ -106,6 +118,7 @@ def create_time_slot(data):
         end_time=end,
         label=data.get("label") or None,
         is_break=bool(data.get("is_break", False)),
+        is_active=bool(data.get("is_active", True)),
     )
     db.session.add(ts)
     db.session.commit()
@@ -113,7 +126,7 @@ def create_time_slot(data):
 
 
 def update_time_slot(slot_id, data, partial=False):
-    ts = TimeSlot.query.get(slot_id)
+    ts = db.session.get(TimeSlot, slot_id)
     if not ts:
         return None, None
     errors, new_start, new_end = _validate(data, partial=partial)
@@ -137,12 +150,14 @@ def update_time_slot(slot_id, data, partial=False):
         ts.label = data.get("label") or None
     if "is_break" in data:
         ts.is_break = bool(data["is_break"])
+    if "is_active" in data:
+        ts.is_active = bool(data["is_active"])
     db.session.commit()
     return serialize(ts), None
 
 
 def delete_time_slot(slot_id):
-    ts = TimeSlot.query.get(slot_id)
+    ts = db.session.get(TimeSlot, slot_id)
     if not ts:
         return False, "not_found"
     if TimetableEntry.query.filter_by(time_slot_id=slot_id).first():
