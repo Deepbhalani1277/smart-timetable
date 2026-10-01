@@ -1,0 +1,28 @@
+kind = "web"
+previewPath = "/"
+title = "Smart Classroom Scheduler"
+description = "A functional university administration frontend for managing subjects, faculty, classrooms, student groups, time slots, and teaching assignments through a configurable Flask REST API."
+version = "1.0.0"
+id = "artifacts/smart-classroom-scheduler"
+router = "path"
+
+[[services]]
+name = "web"
+paths = [ "/" ]
+localPort = 18507
+
+[services.development]
+run = "pnpm --filter @workspace/smart-classroom-scheduler run dev"
+
+[services.production]
+build = [ "pnpm", "--filter", "@workspace/smart-classroom-scheduler", "run", "build" ]
+serve = "static"
+publicDir = "artifacts/smart-classroom-scheduler/dist/public"
+
+[[services.production.rewrites]]
+from = "/*"
+to = "/index.html"
+
+[services.env]
+PORT = "18507"
+BASE_PATH = "/"
