@@ -405,37 +405,72 @@ export default function App() {
 
   const handleDeleteSlot = async (slotId) => {
     if (!window.confirm('Delete this time slot? If it is referenced in an existing timetable, referenced sessions will be cleared.')) return;
+    setLoading(true);
     try {
       const res = await fetch(`${API_BASE}/time-slots/${slotId}?force=true`, { method: 'DELETE' });
       if (res.ok || res.status === 204) {
         showToast('Time slot removed');
-        loadAllData();
+        setTimeSlots((prev) => prev.filter((ts) => ts.id !== slotId));
+        await loadAllData();
       } else {
-        const data = await res.json();
+        const data = await res.json().catch(() => ({}));
         showToast(data.message || 'Cannot delete time slot', 'error');
       }
-    } catch {
-      showToast('Error deleting time slot', 'error');
+    } catch (err) {
+      showToast(err.message || 'Error deleting time slot', 'error');
+    } finally {
+      setLoading(false);
     }
   };
 
   const handleDeleteStandardPeriod = async (period) => {
-    const matching = timeSlots.filter(
-      (ts) => ts.start_time === period.start_time && ts.end_time === period.end_time
-    );
-    if (!window.confirm(`Delete "${period.label || period.start_time + ' - ' + period.end_time}" across all ${matching.length} weekdays?`)) return;
+    // Collect all matching slot IDs from period.slotIds or timeSlots
+    let idsToDelete = [];
+    if (period.slotIds && period.slotIds.length > 0) {
+      idsToDelete = [...period.slotIds];
+    } else {
+      idsToDelete = timeSlots
+        .filter((ts) => ts.start_time === period.start_time && ts.end_time === period.end_time)
+        .map((ts) => ts.id);
+    }
+
+    if (idsToDelete.length === 0) {
+      // Fallback: match by prefix in case seconds are included
+      idsToDelete = timeSlots
+        .filter((ts) => (ts.start_time || '').startsWith(period.start_time) && (ts.end_time || '').startsWith(period.end_time))
+        .map((ts) => ts.id);
+    }
+
+    if (idsToDelete.length === 0) {
+      showToast('Could not find matching time slots to delete.', 'error');
+      return;
+    }
+
+    const count = idsToDelete.length;
+    if (!window.confirm(`Delete "${period.label || period.start_time + ' – ' + period.end_time}" across all ${count} weekday(s)? Any referenced classes will be unassigned.`)) {
+      return;
+    }
 
     setLoading(true);
     try {
-      await Promise.all(
-        matching.map((ts) =>
-          fetch(`${API_BASE}/time-slots/${ts.id}?force=true`, { method: 'DELETE' })
+      const responses = await Promise.all(
+        idsToDelete.map((id) =>
+          fetch(`${API_BASE}/time-slots/${id}?force=true`, { method: 'DELETE' })
         )
       );
-      showToast(`Removed period across all weekdays`);
+
+      const failed = responses.filter((r) => !r.ok && r.status !== 204);
+      if (failed.length > 0) {
+        showToast(`Warning: ${failed.length} slots could not be deleted`, 'error');
+      } else {
+        showToast(`Removed period across all weekdays`);
+      }
+
+      // Optimistically update local state immediately
+      setTimeSlots((prev) => prev.filter((ts) => !idsToDelete.includes(ts.id)));
       await loadAllData();
-    } catch {
-      showToast('Error removing standard period', 'error');
+    } catch (err) {
+      showToast(err.message || 'Error removing standard period', 'error');
     } finally {
       setLoading(false);
     }
