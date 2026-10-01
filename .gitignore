@@ -1,0 +1,79 @@
+# ── Python / Backend ─────────────────────────────────────────────────────────
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+*.so
+*.egg
+*.egg-info/
+dist/
+build/
+.eggs/
+
+# Virtual environments
+.venv/
+venv/
+env/
+ENV/
+
+# Environment secrets — never commit
+backend/.env
+
+# SQLite databases
+*.db
+*.sqlite
+*.sqlite3
+
+# Flask instance folder (contains the dev database)
+backend/instance/
+
+# pytest
+.pytest_cache/
+.coverage
+htmlcov/
+
+# mypy / pyright
+.mypy_cache/
+.dmypy.json
+
+# ── Node / Frontend ───────────────────────────────────────────────────────────
+node_modules/
+dist/
+tmp/
+out-tsc/
+*.tsbuildinfo
+.expo/
+.expo-shared/
+
+# Lock files — keep pnpm-lock.yaml, ignore others
+package-lock.json
+yarn.lock
+
+# ── IDEs & Editors ────────────────────────────────────────────────────────────
+.vscode/*
+!.vscode/settings.json
+!.vscode/tasks.json
+!.vscode/launch.json
+!.vscode/extensions.json
+.idea/
+*.sublime-workspace
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+
+# ── OS ────────────────────────────────────────────────────────────────────────
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# ── Replit ────────────────────────────────────────────────────────────────────
+.cache/
+.local/
+.replit
+.replitignore
+
+# ── Misc ──────────────────────────────────────────────────────────────────────
+*.log
+coverage/
+.sass-cache/
